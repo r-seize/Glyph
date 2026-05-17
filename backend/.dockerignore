@@ -1,0 +1,17 @@
+.venv
+__pycache__
+*.pyc
+*.pyo
+.git
+.gitignore
+.python-version
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.env
+.env.*
+data/
+*.db
+*.sqlite
+README.md
+install.sh

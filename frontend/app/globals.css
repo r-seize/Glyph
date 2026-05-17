@@ -1,0 +1,455 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+@theme {
+  --color-primary: #374375;
+  --color-primary-hover: #2d3860;
+  --color-primary-muted: rgba(55, 67, 117, 0.12);
+
+  --color-surface: #ffffff;
+  --color-surface-1: #f7f7f7;
+  --color-surface-2: #eeeeee;
+  --color-surface-3: #e3e3e3;
+  --color-surface-4: #d6d6d6;
+
+  --color-border: rgba(0, 0, 0, 0.09);
+  --color-border-strong: rgba(0, 0, 0, 0.20);
+  --color-border-accent: rgba(0, 0, 0, 0.35);
+
+  --color-text-primary: #0a0a0a;
+  --color-text-secondary: #3f3f3f;
+  --color-text-muted: #888888;
+
+  --font-family-sans: Inter, system-ui, sans-serif;
+  --font-family-mono: Menlo, Monaco, "Courier New", monospace;
+
+  --font-size-2xs: 0.72rem;
+  --line-height-2xs: 1.1rem;
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  html {
+    font-size: 16px;
+  }
+
+  body {
+    background-color: var(--color-surface);
+    color: var(--color-text-primary);
+    font-family: Inter, system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  .dark {
+    --color-primary: #5a6aaa;
+    --color-primary-hover: #6b7bbf;
+    --color-primary-muted: rgba(90, 106, 170, 0.15);
+
+    --color-surface: #0a0a0a;
+    --color-surface-1: #111111;
+    --color-surface-2: #1a1a1a;
+    --color-surface-3: #242424;
+    --color-surface-4: #2e2e2e;
+
+    --color-border: rgba(255, 255, 255, 0.08);
+    --color-border-strong: rgba(255, 255, 255, 0.16);
+    --color-border-accent: rgba(255, 255, 255, 0.28);
+
+    --color-text-primary: #f0f0f0;
+    --color-text-secondary: #a0a0a0;
+    --color-text-muted: #606060;
+  }
+
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.14);
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(0, 0, 0, 0.26);
+  }
+
+  .dark ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  ::selection {
+    background: rgba(0, 0, 0, 0.12);
+  }
+
+  .dark ::selection {
+    background: rgba(255, 255, 255, 0.15);
+  }
+}
+
+@utility text-2xs {
+  font-size: 0.72rem;
+  line-height: 1.1rem;
+}
+
+/* ── Code ref border flash animation ────────────────────────────────────── */
+@keyframes ref-border-flash {
+  0%   { box-shadow: inset 4px 0 0 var(--ref-flash-color); background-color: var(--ref-flash-bg); }
+  35%  { box-shadow: inset 6px 0 0 var(--ref-flash-color); background-color: var(--ref-flash-color-alpha); }
+  65%  { box-shadow: inset 6px 0 0 var(--ref-flash-color); background-color: var(--ref-flash-color-alpha); }
+  100% { box-shadow: inset 4px 0 0 var(--ref-flash-color); background-color: var(--ref-flash-bg); }
+}
+
+/* ── Code reference chips ────────────────────────────────────────────────── */
+.code-ref-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 5px;
+  margin: 0 1px;
+  border-radius: 4px;
+  font-size: 0.78em;
+  font-weight: 500;
+  font-family: var(--font-family-mono);
+  line-height: 1.6;
+  vertical-align: middle;
+  background-color: rgba(55, 67, 117, 0.1);
+  border: 1px solid rgba(55, 67, 117, 0.35);
+  color: #374375;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  transition: background-color 0.15s;
+}
+.code-ref-chip:hover {
+  background-color: rgba(55, 67, 117, 0.18);
+}
+.code-ref-chip:active {
+  opacity: 0.7;
+}
+.code-ref-chip.code-ref-missing {
+  background-color: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.45);
+  color: #dc2626;
+  cursor: default;
+}
+.dark .code-ref-chip {
+  background-color: rgba(90, 106, 170, 0.15);
+  border-color: rgba(90, 106, 170, 0.4);
+  color: #8899cc;
+}
+.dark .code-ref-chip:hover {
+  background-color: rgba(90, 106, 170, 0.25);
+}
+.dark .code-ref-chip.code-ref-missing {
+  background-color: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #f87171;
+}
+
+/* ── Syntax highlighting theme (light) ───────────────────────────────────── */
+.hljs-glyph .hljs-comment,
+.hljs-glyph .hljs-quote { color: #6e7781; font-style: italic; }
+
+.hljs-glyph .hljs-keyword,
+.hljs-glyph .hljs-selector-tag,
+.hljs-glyph .hljs-literal,
+.hljs-glyph .hljs-operator { color: #cf222e; }
+
+.hljs-glyph .hljs-string,
+.hljs-glyph .hljs-doctag,
+.hljs-glyph .hljs-template-variable,
+.hljs-glyph .hljs-regexp { color: #0a3069; }
+
+.hljs-glyph .hljs-number { color: #0550ae; }
+
+.hljs-glyph .hljs-title,
+.hljs-glyph .hljs-title.class_,
+.hljs-glyph .hljs-title.function_ { color: #8250df; }
+
+.hljs-glyph .hljs-built_in,
+.hljs-glyph .hljs-builtin-name { color: #953800; }
+
+.hljs-glyph .hljs-attr,
+.hljs-glyph .hljs-attribute { color: #0550ae; }
+
+.hljs-glyph .hljs-type,
+.hljs-glyph .hljs-class .hljs-title { color: #116329; }
+
+.hljs-glyph .hljs-tag { color: #116329; }
+.hljs-glyph .hljs-tag .hljs-name { color: #116329; }
+.hljs-glyph .hljs-tag .hljs-attr { color: #0550ae; }
+
+.hljs-glyph .hljs-variable,
+.hljs-glyph .hljs-params { color: #953800; }
+
+.hljs-glyph .hljs-meta { color: #0550ae; }
+.hljs-glyph .hljs-section { color: #0a3069; font-weight: bold; }
+.hljs-glyph .hljs-bullet { color: #953800; }
+.hljs-glyph .hljs-link { color: #0a3069; text-decoration: underline; }
+.hljs-glyph .hljs-emphasis { font-style: italic; }
+.hljs-glyph .hljs-strong { font-weight: bold; }
+.hljs-glyph .hljs-deletion { color: #82071e; background-color: #ffebe9; }
+.hljs-glyph .hljs-addition { color: #116329; background-color: #dafbe1; }
+
+/* ── Syntax highlighting theme (dark) ────────────────────────────────────── */
+.dark .hljs-glyph .hljs-comment,
+.dark .hljs-glyph .hljs-quote { color: #8b949e; font-style: italic; }
+
+.dark .hljs-glyph .hljs-keyword,
+.dark .hljs-glyph .hljs-selector-tag,
+.dark .hljs-glyph .hljs-literal,
+.dark .hljs-glyph .hljs-operator { color: #ff7b72; }
+
+.dark .hljs-glyph .hljs-string,
+.dark .hljs-glyph .hljs-doctag,
+.dark .hljs-glyph .hljs-template-variable,
+.dark .hljs-glyph .hljs-regexp { color: #a5d6ff; }
+
+.dark .hljs-glyph .hljs-number { color: #79c0ff; }
+
+.dark .hljs-glyph .hljs-title,
+.dark .hljs-glyph .hljs-title.class_,
+.dark .hljs-glyph .hljs-title.function_ { color: #d2a8ff; }
+
+.dark .hljs-glyph .hljs-built_in,
+.dark .hljs-glyph .hljs-builtin-name { color: #ffa657; }
+
+.dark .hljs-glyph .hljs-attr,
+.dark .hljs-glyph .hljs-attribute { color: #79c0ff; }
+
+.dark .hljs-glyph .hljs-type,
+.dark .hljs-glyph .hljs-class .hljs-title { color: #7ee787; }
+
+.dark .hljs-glyph .hljs-tag { color: #7ee787; }
+.dark .hljs-glyph .hljs-tag .hljs-name { color: #7ee787; }
+.dark .hljs-glyph .hljs-tag .hljs-attr { color: #79c0ff; }
+
+.dark .hljs-glyph .hljs-variable,
+.dark .hljs-glyph .hljs-params { color: #ffa657; }
+
+.dark .hljs-glyph .hljs-meta { color: #79c0ff; }
+.dark .hljs-glyph .hljs-section { color: #a5d6ff; font-weight: bold; }
+.dark .hljs-glyph .hljs-bullet { color: #ffa657; }
+.dark .hljs-glyph .hljs-link { color: #a5d6ff; text-decoration: underline; }
+.dark .hljs-glyph .hljs-deletion { color: #ffdcd7; background-color: #67060c; }
+.dark .hljs-glyph .hljs-addition { color: #aff5b4; background-color: #033a16; }
+
+/* ── Tiptap WYSIWYG editor (.tiptap-doc) ─────────────────────────────────── */
+.tiptap-doc {
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: var(--color-text-primary);
+}
+
+.tiptap-doc > * + * { margin-top: 0.85em; }
+
+.tiptap-doc h1,
+.tiptap-doc h2,
+.tiptap-doc h3,
+.tiptap-doc h4,
+.tiptap-doc h5,
+.tiptap-doc h6 {
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--color-text-primary);
+  margin-top: 1.4em;
+  margin-bottom: 0.4em;
+  scroll-margin-top: 1rem;
+}
+.tiptap-doc h1 { font-size: 1.65rem; padding-bottom: 0.3em; border-bottom: 1px solid var(--color-border); }
+.tiptap-doc h2 { font-size: 1.35rem; padding-bottom: 0.25em; border-bottom: 1px solid var(--color-border); }
+.tiptap-doc h3 { font-size: 1.15rem; }
+.tiptap-doc h4 { font-size: 1rem; }
+.tiptap-doc h5 { font-size: 0.92rem; color: var(--color-text-secondary); }
+.tiptap-doc h6 { font-size: 0.85rem; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+
+.tiptap-doc p { margin: 0; }
+
+.tiptap-doc a.doc-link,
+.tiptap-doc a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.tiptap-doc a:hover { color: var(--color-primary-hover); }
+.dark .tiptap-doc a,
+.dark .tiptap-doc a.doc-link { color: var(--color-primary); }
+.dark .tiptap-doc a:hover { color: var(--color-primary-hover); }
+
+.tiptap-doc strong { font-weight: 700; color: var(--color-text-primary); }
+.tiptap-doc em { font-style: italic; }
+.tiptap-doc s { text-decoration: line-through; color: var(--color-text-muted); }
+
+.tiptap-doc ul,
+.tiptap-doc ol {
+  padding-left: 1.4em;
+}
+.tiptap-doc ul { list-style: disc; }
+.tiptap-doc ol { list-style: decimal; }
+.tiptap-doc li > p { margin: 0.15em 0; }
+.tiptap-doc li::marker { color: var(--color-text-muted); }
+
+.tiptap-doc ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0.25em;
+}
+.tiptap-doc ul[data-type="taskList"] li {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  margin: 0.15em 0;
+}
+.tiptap-doc ul[data-type="taskList"] li > label {
+  flex-shrink: 0;
+  user-select: none;
+}
+.tiptap-doc ul[data-type="taskList"] li > div { flex: 1; min-width: 0; }
+.tiptap-doc ul[data-type="taskList"] input[type="checkbox"] {
+  cursor: pointer;
+  accent-color: #10b981;
+  width: 14px;
+  height: 14px;
+}
+.tiptap-doc ul[data-type="taskList"] li[data-checked="true"] > div {
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+}
+
+.tiptap-doc blockquote {
+  border-left: 3px solid var(--color-border-strong);
+  padding: 0.2em 0 0.2em 1em;
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+.tiptap-doc blockquote > p { margin: 0.25em 0; }
+
+.tiptap-doc hr {
+  border: 0;
+  border-top: 1px solid var(--color-border);
+  margin: 1.5em 0;
+}
+
+/* Inline code */
+.tiptap-doc code {
+  font-family: var(--font-family-mono);
+  font-size: 0.85em;
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  background: var(--color-surface-2);
+  color: #be185d;
+  border: 1px solid var(--color-border);
+}
+.dark .tiptap-doc code { color: #f472b6; }
+
+/* Code block (lowlight-rendered) */
+.tiptap-doc pre {
+  background: var(--color-surface-1);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 0.9em 1.1em;
+  overflow-x: auto;
+  font-family: var(--font-family-mono);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+.tiptap-doc pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+  border-radius: 0;
+}
+
+/* Tables (in case GFM tables get pasted) */
+.tiptap-doc table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+.tiptap-doc th,
+.tiptap-doc td {
+  border: 1px solid var(--color-border);
+  padding: 0.4em 0.7em;
+  text-align: left;
+}
+.tiptap-doc th {
+  background: var(--color-surface-1);
+  font-weight: 600;
+}
+
+.tiptap-doc img {
+  max-width: 100%;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+}
+
+/* Placeholder: show only on the first paragraph when the whole editor is empty */
+.tiptap-doc .is-empty::before { content: none; }
+.tiptap-doc p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--color-text-muted);
+  pointer-events: none;
+  height: 0;
+}
+
+/* ProseMirror text selection */
+.tiptap-doc ::selection {
+  background: rgba(59, 130, 246, 0.2);
+}
+.dark .tiptap-doc ::selection {
+  background: rgba(96, 165, 250, 0.28);
+}
+
+/* ── Prose overrides for Tiptap ──────────────────────────────────────────── */
+/* Suppress backtick pseudo-content that prose adds around inline code */
+.tiptap-doc code::before,
+.tiptap-doc code::after { content: ''; }
+
+/* Keep code block (pre) using our hljs-glyph theme, not prose's dark bg */
+.tiptap-doc pre {
+  background: var(--color-surface-1) !important;
+  color: var(--color-text-primary) !important;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+.tiptap-doc pre code {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  font-size: inherit !important;
+  color: inherit !important;
+  border-radius: 0 !important;
+}
+
+/* Inline code: pink-on-surface-2 instead of prose's gray */
+.tiptap-doc :not(pre) > code {
+  color: #be185d !important;
+  background: var(--color-surface-2) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 4px;
+  padding: 0.15em 0.4em !important;
+}
+.dark .tiptap-doc :not(pre) > code { color: #f472b6 !important; }
+
+/* Ensure prose links match primary color */
+.tiptap-doc a { color: var(--color-primary) !important; }
+.tiptap-doc a:hover { color: var(--color-primary-hover) !important; }
