@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.config import settings
 from app.api.router import router
+from app.websockets.presence import router as ws_router
 from app.core.exceptions import GlyphException
 
 logging.basicConfig(level=logging.INFO)
@@ -72,6 +73,7 @@ async def glyph_exception_handler(request: Request, exc: GlyphException) -> JSON
 
 
 app.include_router(router)
+app.include_router(ws_router)
 
 
 @app.get("/health")

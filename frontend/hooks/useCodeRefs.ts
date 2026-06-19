@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { codeRefsApi } from '@/lib/api';
 import { CodeReference } from '@/types';
+import { collabBus } from '@/lib/collab-bus';
 
 const refsKey = (projectId: string, path: string, commitSha: string) =>
     ['codeRefs', projectId, path, commitSha] as const;
@@ -40,6 +41,7 @@ export function useCreateCodeRef(projectId: string, path: string, commitSha: str
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: refsKey(projectId, path, commitSha) });
             qc.invalidateQueries({ queryKey: ['codeRefsAll', projectId] });
+            collabBus.send({ event: 'invalidate', target: 'code-refs' });
         },
     });
 }
@@ -57,6 +59,7 @@ export function useUpdateCodeRef(projectId: string, path: string, commitSha: str
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: refsKey(projectId, path, commitSha) });
             qc.invalidateQueries({ queryKey: ['codeRefsAll', projectId] });
+            collabBus.send({ event: 'invalidate', target: 'code-refs' });
         },
     });
 }
@@ -71,6 +74,7 @@ export function useDeleteCodeRef(projectId: string, path: string, commitSha: str
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: refsKey(projectId, path, commitSha) });
             qc.invalidateQueries({ queryKey: ['codeRefsAll', projectId] });
+            collabBus.send({ event: 'invalidate', target: 'code-refs' });
         },
     });
 }

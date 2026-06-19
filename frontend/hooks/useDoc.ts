@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { docsApi } from '@/lib/api';
 import { Document, Comment } from '@/types';
+import { collabBus } from '@/lib/collab-bus';
 
 export function useDoc(projectId: string, filePath: string, commitSha: string) {
     return useQuery<Document | null>({
@@ -68,6 +69,7 @@ export function useAddComment(projectId: string) {
             queryClient.invalidateQueries({
                 queryKey: ['comments', projectId, variables.file_path, variables.commit_sha],
             });
+            collabBus.send({ event: 'invalidate', target: 'comments' });
         },
     });
 }

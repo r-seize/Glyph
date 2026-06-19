@@ -22,6 +22,10 @@ import {
     Link as LinkIcon, Undo2, Redo2, Braces, Loader2, Check, AtSign,
 } from 'lucide-react';
 import { useSaveDoc } from '@/hooks/useDoc';
+import { useCollab } from '@/hooks/useCollab';
+import Avatar from '@/components/ui/Avatar';
+import Tooltip from '@/components/ui/Tooltip';
+import { collabBus } from '@/lib/collab-bus';
 import { cn } from '@/lib/utils';
 import { refColorAt } from '@/lib/refColors';
 
@@ -137,6 +141,45 @@ interface ContributorSuggestion {
 }
 
 const codeRefPluginKey = new PluginKey('codeRefDecorations');
+const remoteCursorPluginKey = new PluginKey('remoteCursors');
+
+// Same palette as Avatar.tsx - deterministic color per username
+const CURSOR_COLORS = [
+    '#374375', '#7c3aed', '#0369a1', '#0f766e', '#15803d',
+    '#b45309', '#c2410c', '#be123c', '#6d28d9', '#0e7490',
+    '#4338ca', '#047857', '#b91c1c', '#1d4ed8', '#7e22ce',
+];
+function cursorColor(name: string): string {
+    let h = 0;
+    for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+    return CURSOR_COLORS[Math.abs(h) % CURSOR_COLORS.length];
+}
+
+function buildCursorWidget(username: string, color: string): HTMLElement {
+    // Inline display (default for <span>) - no explicit box dimensions.
+    // border-left draws the cursor line; matching negative margins keep net width = 0
+    // so this element never causes a line wrap (same technique as TipTap collab cursor).
+    const wrap = document.createElement('span');
+    wrap.setAttribute('contenteditable', 'false');
+    wrap.style.cssText =
+        'border-left:2px solid ' + color + ';' +
+        'margin-left:-1px;margin-right:-1px;' +
+        'word-break:normal;position:relative;user-select:none;';
+
+    const label = document.createElement('span');
+    label.textContent = username;
+    label.style.cssText =
+        'position:absolute;top:-1.8em;left:-1px;background:' + color +
+        ';color:#fff;font-size:11px;font-weight:600;font-family:system-ui,sans-serif;' +
+        'padding:1px 6px;border-radius:3px 3px 3px 0;white-space:nowrap;' +
+        'pointer-events:none;user-select:none;line-height:1.4;' +
+        'opacity:0;transition:opacity 0.12s ease;z-index:100;';
+
+    wrap.appendChild(label);
+    wrap.addEventListener('mouseenter', () => { label.style.opacity = '1'; });
+    wrap.addEventListener('mouseleave', () => { label.style.opacity = '0'; });
+    return wrap;
+}
 
 export default function DocEditor({ projectId, filePath, commitSha, initialContent, onRefClick }: DocEditorProps) {
     const [mode, setMode] = useState<EditorMode>('wysiwyg');
@@ -148,7 +191,27 @@ export default function DocEditor({ projectId, filePath, commitSha, initialConte
     const [contributorSuggestion, setContributorSuggestion] = useState<ContributorSuggestion | null>(null);
     const [contributorIndex, setContributorIndex] = useState(0);
     const saveDoc = useSaveDoc();
+    const { users: collabUsers, remoteCursors } = useCollab(projectId, commitSha, filePath, {
+        onDocUpdate: (content: string) => {
+            if (dirtyRef.current) return;
+            skipNextUpdate.current = true;
+            // Block cursor broadcast during setContent - it fires onSelectionUpdate
+            // synchronously and would send a stale position to the remote user
+            skipCursorBroadcastRef.current = true;
+            setRawMd(content);
+            setEditorHasContent(!!content);
+            editor?.commands.setContent(content);
+            skipCursorBroadcastRef.current = false;
+        },
+    });
     const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const wsBroadcast = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const cursorBroadcast = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const remoteCursorsRef = useRef(remoteCursors);
+    remoteCursorsRef.current = remoteCursors;
+    // Prevents broadcasting our cursor when we apply a remote doc-update (would
+    // cause the remote user to see a phantom cursor jump on our side)
+    const skipCursorBroadcastRef = useRef(false);
     const skipNextUpdate = useRef(true);
 
     // Dirty-tracking refs for Ctrl+S and auto-save on leave
@@ -186,6 +249,14 @@ export default function DocEditor({ projectId, filePath, commitSha, initialConte
         dirtyRef.current = true;
         currentContentRef.current = content;
         setSaveStatus('saving');
+
+        // Broadcast content to room in near-real-time (150 ms), independently of the DB save
+        if (wsBroadcast.current) clearTimeout(wsBroadcast.current);
+        wsBroadcast.current = setTimeout(() => {
+            collabBus.send({ event: 'doc-update', content });
+        }, 150);
+
+        // Persist to DB with the normal debounce
         if (debounce.current) clearTimeout(debounce.current);
         debounce.current = setTimeout(async () => {
             dirtyRef.current = false;
@@ -205,8 +276,13 @@ export default function DocEditor({ projectId, filePath, commitSha, initialConte
         if (debounce.current) clearTimeout(debounce.current);
         dirtyRef.current = false;
         setSaveStatus('saving');
-        saveDoc.mutateAsync({ projectId, file_path: filePath, commit_sha: commitSha, content: currentContentRef.current })
-            .then(() => { setSaveStatus('saved'); setTimeout(() => setSaveStatus('idle'), 3000); })
+        const content = currentContentRef.current;
+        collabBus.send({ event: 'doc-update', content });
+        saveDoc.mutateAsync({ projectId, file_path: filePath, commit_sha: commitSha, content })
+            .then(() => {
+                setSaveStatus('saved');
+                setTimeout(() => setSaveStatus('idle'), 3000);
+            })
             .catch(() => setSaveStatus('idle'));
     };
 
@@ -225,6 +301,14 @@ export default function DocEditor({ projectId, filePath, commitSha, initialConte
             Markdown.configure({ html: false, linkify: true, breaks: false, transformPastedText: true, transformCopiedText: true }),
         ],
         content: initialContent || '',
+        onSelectionUpdate({ editor }) {
+            if (skipCursorBroadcastRef.current) return;
+            const { from, to } = editor.state.selection;
+            if (cursorBroadcast.current) clearTimeout(cursorBroadcast.current);
+            cursorBroadcast.current = setTimeout(() => {
+                collabBus.send({ event: 'cursor', from, to });
+            }, 50);
+        },
         onUpdate({ editor }) {
             setEditorHasContent(!editor.isEmpty);
             if (skipNextUpdate.current) {
@@ -417,6 +501,88 @@ export default function DocEditor({ projectId, filePath, commitSha, initialConte
         return () => { editor.unregisterPlugin(codeRefPluginKey); };
     }, [editor]);
 
+    // Remote cursor decoration plugin - renders other users' carets and selections
+    useEffect(() => {
+        if (!editor) return;
+        const cursorsRef = remoteCursorsRef;
+        const plugin = new Plugin({
+            key: remoteCursorPluginKey,
+            props: {
+                decorations(pmState) {
+                    const decs: Decoration[] = [];
+                    const docSize = pmState.doc.content.size;
+                    for (const [, cursor] of cursorsRef.current) {
+                        const color = cursorColor(cursor.user.username);
+                        const safeFrom = Math.min(Math.max(0, cursor.from), docSize);
+                        const safeTo   = Math.min(Math.max(0, cursor.to),   docSize);
+                        const lo = Math.min(safeFrom, safeTo);
+                        const hi = Math.max(safeFrom, safeTo);
+
+                        // Selection highlight - data-* attrs let the tooltip useEffect
+                        // read name + color without needing closure references
+                        if (lo !== hi) {
+                            decs.push(Decoration.inline(lo, hi, {
+                                style: `background:${color}33;border-radius:2px;cursor:default;`,
+                                'data-rcursor-name': cursor.user.username,
+                                'data-rcursor-color': color,
+                            }));
+                        }
+
+                        // Caret widget + floating name label
+                        decs.push(Decoration.widget(safeTo, () => buildCursorWidget(cursor.user.username, color), {
+                            side: 1,
+                            key: `rc-${cursor.user.user_id}`,
+                        }));
+                    }
+                    return DecorationSet.create(pmState.doc, decs);
+                },
+            },
+        });
+        editor.registerPlugin(plugin);
+        return () => { editor.unregisterPlugin(remoteCursorPluginKey); };
+    }, [editor]);
+
+    // Trigger a no-op transaction whenever remote cursors change so decorations re-render
+    useEffect(() => {
+        if (!editor) return;
+        editor.view.dispatch(editor.state.tr);
+    }, [editor, remoteCursors]);
+
+    // Floating tooltip - shows the remote user's name when hovering their selection
+    useEffect(() => {
+        if (!editor) return;
+        const editorWrap = editor.view.dom.closest('.tiptap-editor-wrap') as HTMLElement | null;
+        if (!editorWrap) return;
+
+        const tip = document.createElement('span');
+        tip.style.cssText =
+            'position:fixed;padding:1px 8px;border-radius:4px;font-size:11px;' +
+            'font-weight:600;font-family:system-ui,sans-serif;color:#fff;line-height:1.6;' +
+            'pointer-events:none;white-space:nowrap;z-index:1000;display:none;';
+        document.body.appendChild(tip);
+
+        const handle = (e: MouseEvent) => {
+            const sel = (e.target as HTMLElement).closest('[data-rcursor-name]') as HTMLElement | null;
+            if (!sel) { tip.style.display = 'none'; return; }
+            tip.textContent = sel.dataset.rcursorName ?? '';
+            tip.style.background = sel.dataset.rcursorColor ?? '#555';
+            tip.style.left = (e.clientX + 10) + 'px';
+            tip.style.top  = (e.clientY  - 30) + 'px';
+            tip.style.display = 'block';
+        };
+
+        editorWrap.addEventListener('mouseover',  handle);
+        editorWrap.addEventListener('mousemove',  handle);
+        editorWrap.addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+
+        return () => {
+            editorWrap.removeEventListener('mouseover',  handle);
+            editorWrap.removeEventListener('mousemove',  handle);
+            editorWrap.removeEventListener('mouseleave', () => { tip.style.display = 'none'; });
+            tip.remove();
+        };
+    }, [editor]);
+
     // Keep code refs in sync and re-trigger decoration rendering
     useEffect(() => {
         if (!editor) return;
@@ -517,6 +683,27 @@ export default function DocEditor({ projectId, filePath, commitSha, initialConte
                 <Toolbar editor={editor} disabled={mode === 'markdown'} />
 
                 <div className="flex items-center gap-2 flex-shrink-0">
+                    {/* Collab presence - other users viewing this document */}
+                    {collabUsers.length > 0 && (
+                        <div className="flex items-center -space-x-2">
+                            {collabUsers.slice(0, 4).map((u) => (
+                                <Tooltip key={u.user_id} content={u.username} position="bottom">
+                                    <Avatar
+                                        src={u.avatar_url}
+                                        name={u.username}
+                                        size="xs"
+                                        className="ring-2 ring-surface-1 cursor-default"
+                                    />
+                                </Tooltip>
+                            ))}
+                            {collabUsers.length > 4 && (
+                                <div className="h-7 w-7 rounded-full bg-surface-2 ring-2 ring-surface-1 flex items-center justify-center text-2xs font-medium text-text-muted">
+                                    +{collabUsers.length - 4}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* Mode toggle */}
                     <div className="flex items-center bg-surface-2 rounded-md p-0.5 text-xs">
                         <button
